@@ -1,0 +1,101 @@
+version: 2
+template:
+  name: Build your own toolchain
+  description: poultrysense-bts-toolchain
+  required:
+    - githubconsolidated01
+    - githubconsolidated04
+toolchain:
+  name: poultrysense-bts-toolchain
+services:
+  orion00:
+    parameters:
+      toolchain_id: '****'
+      dashboard_url: '****'
+    service_id: orion
+  githubconsolidated01:
+    parameters:
+      extra_capabilities:
+        - capability_id: git.issues
+          display_name: Issues
+          dashboard_url: https://github.com/sberajaw/poultrysense-bts-ingest/issues
+          label: poultrysense-bts-ingest
+          tags:
+            - think
+            - code
+          enabled: true
+          readme: false
+      label: poultrysense-bts-ingest
+      type: link
+      legal: false
+      git_id: github
+      blind_connection: false
+      owner_id: sberajaw
+      repo_url: https://github.com/sberajaw/poultrysense-bts-ingest.git
+      private_repo: true
+      has_issues: true
+      auto_init: false
+      enable_traceability: true
+      authorized: github
+      integration_owner: IBMid-2700032G05
+      repo_name: poultrysense-bts-ingest
+      api_root_url: '****'
+      token_url: '****'
+    service_id: githubconsolidated
+  pipeline02:
+    parameters:
+      label: poultrysense-animal-passport
+      type: classic
+      name: poultrysense-animal-passport
+      ui_pipeline: true
+      api_url: '****'
+      external_api_url: '****'
+      configuration:
+        content:
+          $text: pipeline_pipeline02.yml
+      services:
+        - githubconsolidated04
+    service_id: pipeline
+  pipeline03:
+    parameters:
+      label: poultrysense-bts-ingest
+      type: classic
+      name: poultrysense-bts-ingest
+      ui_pipeline: true
+      api_url: '****'
+      external_api_url: '****'
+      configuration:
+        content:
+          $text: pipeline_pipeline03.yml
+      services:
+        - githubconsolidated01
+    service_id: pipeline
+  githubconsolidated04:
+    parameters:
+      extra_capabilities:
+        - capability_id: git.issues
+          display_name: Issues
+          dashboard_url: https://github.com/sberajaw/poultrysense-animal-passport/issues
+          label: poultrysense-animal-passport
+          tags:
+            - think
+            - code
+          enabled: true
+          readme: false
+      label: poultrysense-animal-passport
+      type: link
+      legal: false
+      git_id: github
+      blind_connection: false
+      owner_id: sberajaw
+      repo_url: https://github.com/sberajaw/poultrysense-animal-passport.git
+      private_repo: true
+      has_issues: true
+      auto_init: false
+      enable_traceability: true
+      authorized: github
+      integration_owner: IBMid-2700032G05
+      repo_name: poultrysense-animal-passport
+      api_root_url: '****'
+      token_url: '****'
+    service_id: githubconsolidated

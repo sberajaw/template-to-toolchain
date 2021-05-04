@@ -1,0 +1,64 @@
+stages:
+  - name: Build
+    inputs:
+      - type: git
+        branch: main
+        dir_name: null
+        service: githubconsolidated04
+    triggers:
+      - type: git
+        events: '{"push":true,"pull_request":false,"pull_request_closed":false}'
+    permission:
+      execute: TOOLCHAIN_ADMINS
+    properties:
+      - name: DEPLOYER_API_KEY
+        type: secure
+      - name: FULL_IMAGE_NAME
+        value: ""
+        type: text
+      - name: CE_RESOURCE_GROUP
+        value: Default
+        type: text
+      - name: CE_PROJECT_NAME
+        value: poultrysense
+        type: text
+      - name: CE_APP_NAME
+        value: poultrysense-animal-passport-app
+        type: text
+      - name: CE_REGISTRY_SECRET
+        value: poultrysense-registry
+        type: text
+    jobs:
+      - name: Build
+        type: builder
+        curatedDockerImage: default
+        artifact_dir: ""
+        build_type: cr
+        script: "#!/bin/bash\necho -e \"Build environment variables:\"\necho \"REGISTRY_URL=${REGISTRY_URL}\"\necho \"REGISTRY_NAMESPACE=${REGISTRY_NAMESPACE}\"\necho \"IMAGE_NAME=${IMAGE_NAME}\"\necho \"BUILD_NUMBER=${BUILD_NUMBER}\"\n\n# Learn more about the available environment variables at:\n# https://cloud.ibm.com/docs/services/ContinuousDelivery?topic=ContinuousDelivery-deliverypipeline_environment#deliverypipeline_environment\n\n# To review or change build options use:\n# ibmcloud cr build --help\n\necho -e \"Checking for Dockerfile at the repository root\"\nif [ -f Dockerfile ]; then \n   echo \"Dockerfile found\"\nelse\n    echo \"Dockerfile not found\"\n    exit 1\nfi\n\n#ensure docker and buildkit are present if not already in current pipeline-base-image\nwhich buildctl > /dev/null || (curl -fsSL https://github.com/moby/buildkit/releases/download/v0.8.0/buildkit-v0.8.0.linux-amd64.tar.gz | tar zxf - --strip-components=1 -C /usr/bin bin/buildctl)\nwhich docker > /dev/null || (curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-19.03.9.tgz | tar zxf - --strip-components=1 -C /usr/bin docker/docker)\n\nFULL_IMAGE_NAME=$REGISTRY_URL/$REGISTRY_NAMESPACE/$IMAGE_NAME\n\necho -e \"Building container image\"\nset -x\nibmcloud cr login\nbuildctl build --frontend dockerfile.v0 --local context=. --local dockerfile=. \\\n  --output type=image,name=${FULL_IMAGE_NAME}:$BUILD_NUMBER,push=true \\\n  --export-cache type=registry,ref=${FULL_IMAGE_NAME}:buildcache \\\n  --import-cache type=registry,ref=${FULL_IMAGE_NAME}:buildcache\nset +x\nexport FULL_IMAGE_NAME=\"${FULL_IMAGE_NAME}:${BUILD_NUMBER}\""
+        namespace: poultrysense
+        image_name: poultrysense-animal-passport
+        target:
+          region_id: ibm:yp:us-south
+          api_key: WLlG0ufLXlBb/Xs3ndLvxtQ31H9bIn1igb7t80Us+2rTZOIHrj7w7h0CSKdgti3LQivgI3QCx+70jKTkn0K4zQ==
+          account_guid: d18ef142dfb4708804bbb1d3417f40d6
+      - name: Deploy
+        type: builder
+        curatedDockerImage: default
+        artifact_dir: ""
+        build_type: shell
+        script: |-
+          #!/bin/bash
+          echo ">>> Updating and checking installed version of IBM Cloud CLI…"
+          ibmcloud update -f -q
+          ibmcloud -v
+          ibmcloud plugin install code-engine
+          echo ">>> Logging into IBM Cloud…"
+          ibmcloud login --apikey $DEPLOYER_API_KEY -r "us-south"
+          ibmcloud target -g $CE_RESOURCE_GROUP
+          echo ">>> Set CLI context to the target project:"
+          ibmcloud ce project select --name $CE_PROJECT_NAME
+          echo ">>> Deploying application to Code Engine…"
+          set -x
+          ibmcloud ce app update --name $CE_APP_NAME --image $FULL_IMAGE_NAME --registry-secret $CE_REGISTRY_SECRET
+          set +x
+properties: []
